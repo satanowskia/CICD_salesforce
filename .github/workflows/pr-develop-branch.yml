@@ -1,3 +1,4 @@
+Please provide the following file:
 # Unique name for this workflow
 name: Validate PR on develop branch
 
@@ -190,3 +191,4 @@ jobs:
 
             - name: 'Deploy destructive changes (if any)'
               run: sf project deploy start \ --metadata-dir  "changed-sources/destructiveChanges" --check-only --ignore-warnings 
+ 
