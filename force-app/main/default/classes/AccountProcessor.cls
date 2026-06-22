@@ -12,5 +12,7 @@ public class AccountProcessor {
             System.debug('some text 30Aug CRMCOM-304');
         }
         update accounts;
-} 
+}
+
+
 }
