@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>this is a new ps that Allows access to the store. Lets users see products and categories, make purchases, and add products to a wishlist.</description>
+    <description> new ps that Allows access to the store. Lets users see products and categories, make purchases, and add products to a wishlist.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <label>BuyerFull</label>
     <license>B2BBuyerPsl</license>
