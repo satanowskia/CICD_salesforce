@@ -1,5 +1,5 @@
 public class AccountProcessor {
-	@future
+    @future
     public static void countContacts(List<Id> recordIds) {
         //List<Account> accounts = [Select Id, Name from Account Where Id IN :recordIds];
         List<Account> accounts= [Select Id, (Select id from Contacts) from Account Where Id IN :recordIds];
