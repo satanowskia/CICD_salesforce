@@ -70,4 +70,3 @@ jobs:
                   sf project deploy start \
                     --metadata-dir changed-sources/destructiveChanges \
                     --ignore-warnings
-``
