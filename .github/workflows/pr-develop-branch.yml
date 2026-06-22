@@ -170,7 +170,7 @@ jobs:
 
             # Now we upload the .sarif file as explained in the previous step
             - name: Upload SARIF file
-              uses: github/codeql-action/upload-sarif@v2
+              uses: github/codeql-action/upload-sarif@v4
               with:
                 sarif_file: changed-sources/apexScanResults.sarif
 
@@ -184,7 +184,7 @@ jobs:
                   echo ${{env.APEX_TESTS}}
                   sf project deploy start \
                     --source-dir changed-sources/force-app \
-                    --check-only \
+                    --dry-run \
                     --test-level RunSpecifiedTests \
                     --tests ${{env.APEX_TESTS}} \
                     --json
@@ -195,7 +195,7 @@ jobs:
               run: |
                   sf project deploy start \
                     --source-dir changed-sources/force-app \
-                    --check-only \
+                    --dry-run\
                     --test-level RunLocalTests \
                     --json
 
@@ -203,5 +203,5 @@ jobs:
               run: |
                   sf project deploy start \
                     --metadata-dir changed-sources/destructiveChanges \
-                    --check-only \
+                    --dry-run \
                     --ignore-warnings
