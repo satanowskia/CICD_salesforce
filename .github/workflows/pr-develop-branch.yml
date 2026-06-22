@@ -61,7 +61,7 @@ jobs:
             # Apex::[CommunitiesLoginControllerTest,MyProfilePageControllerTest]::Apex
             # or Apex::[all]::Apex to run all tests
 
-            # This special delimeter can be added to the PR template so that your 
+            # This special delimiter can be added to the PR template so that your 
             # team doesn't have to remember the syntax. 
 
             # Once a developer has specified a list of classes to run, we need to be able
@@ -84,7 +84,7 @@ jobs:
               # as this allows us to reference the list in a subsequent step.  If you
               # were using a normal env variable, its value would not be available outside this step.
               run: |
-                  echo $PR_BODY > ./pr_body.txt
+                  echo "$PR_BODY" > ./pr_body.txt
                   node ./parsePR.js              
                   TESTS=$(cat testsToRun.txt)       
                   echo "APEX_TESTS=$TESTS" >> $GITHUB_ENV
@@ -93,16 +93,13 @@ jobs:
             - name: 'Install Salesforce CLI'
               run: |
                   npm install -g @salesforce/cli
-                  echo "$HOME/sfdx/bin" >> $GITHUB_PATH
-                  ~/sfdx/bin/sfdx version
+                  sf --version
                   
             - name: Debug environment
               run: |
                   node -v
                   sf --version
                   which sf
-                  which sfdx || true
-
 
             # Then we install the SFDX-Git-Delta plugin - https://github.com/scolladon/sfdx-git-delta
             # This is an awesome plugin that allows us to extract a package.xml with the metadata
@@ -111,18 +108,19 @@ jobs:
 
             - name: 'Installing sfdx git delta'
               run: | 
-                  echo y | sf plugins:install sfdx-git-delta
+                  echo y | sf plugins install sfdx-git-delta
                   sf plugins 
 
             # Install java as it is required for the next step
             - name: 'Installing java'
               run: |
                 sudo apt-get update
-                sudo apt install default-jdk
+                sudo apt install -y default-jdk
 
             # Install SFDX scanner
             - name: 'Installing SFDX scanner'
-              run: sf plugins:install @salesforce/sfdx-scanner
+              run: |
+                echo y | sf plugins install @salesforce/sfdx-scanner
 
             # Prior to setting up this workflow, you have to create a Github Secret
             # that contains the sfdx url of the integration/qa org.
@@ -131,7 +129,7 @@ jobs:
             # https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/cli_reference_auth_sfdxurl.htm
 
             # This URL can then be used with the sfdx auth:sfdxurl:store to authenticate
-            # the sfdx project in the repositry, against the org from which the URL
+            # the sfdx project in the repository, against the org from which the URL
             # was generated from. This works just like that, there's no need to create
             # connected apps or any else. 
 
@@ -140,11 +138,15 @@ jobs:
             - name: 'Populate auth file with SFDX_URL secret of integration org'
               shell: bash
               run: |
-                  echo ${{ secrets.SFDX_INTEGRATION_URL}} > ./SFDX_INTEGRATION_URL.txt
+                  echo "${{ secrets.SFDX_INTEGRATION_URL}}" > ./SFDX_INTEGRATION_URL.txt
 
             # Authenticate to org using the URL stored in the text file
             - name: 'Authenticate to Integration Org'
-              run: sfdx auth:sfdxurl:store -f ./SFDX_INTEGRATION_URL.txt -s -a integration
+              run: |
+                  sf org login sfdx-url \
+                    --sfdx-url-file ./SFDX_INTEGRATION_URL.txt \
+                    --alias integration \
+                    --set-default
 
             # We use SFDX Git Delta to create a directory with only the metadata that has changed.
             # this allows us to deploy only those changes, as opposed to deploying the entire branch. 
@@ -152,7 +154,7 @@ jobs:
             - name: 'Create delta packages for new, modified or deleted metadata'
               run: | 
                   mkdir changed-sources
-                  sf sgd:source:delta --to "HEAD" --from "HEAD^" --output changed-sources/ --generate-delta --source force-app/ 
+                  sf sgd source delta --to HEAD --from HEAD^ --output changed-sources --generate-delta --source force-app/
 
             # Now we can use the sfdx scanner to scan the code in the delta directory
             # The output of the scan is stored in a file called apexScanResults.sarif
@@ -163,7 +165,7 @@ jobs:
             - name: 'Scan code'
               run: |
                   cd changed-sources
-                  sf scanner:run  \ --format sarif --target './**/*.cls' --category "Design,Best Practices,Performance" --outfile 'apexScanResults.sarif'  
+                  sf scanner run --format sarif --target "./**/*.cls" --category "Design,Best Practices,Performance" --outfile apexScanResults.sarif  
                   cd ..
 
             # Now we upload the .sarif file as explained in the previous step
@@ -180,14 +182,26 @@ jobs:
               if: ${{ env.APEX_TESTS != 'all' }}
               run: |
                   echo ${{env.APEX_TESTS}}
-                  sf project deploy start \  --source-dir changed-sources/force-app  --chek-only \ --test-level RunSpecifiedTests --runtests ${{env.APEX_TESTS}} --json
+                  sf project deploy start \
+                    --source-dir changed-sources/force-app \
+                    --check-only \
+                    --test-level RunSpecifiedTests \
+                    --tests ${{env.APEX_TESTS}} \
+                    --json
 
             # If the env variable equals all, we run all tests
             - name: 'Check-only deploy delta changes - run all tests'
               if: ${{ env.APEX_TESTS == 'all' }}
               run: |
-                  sf project deploy start \ ---source-dir "changed-sources/force-app" --checkonly --testlevel RunLocalTests  --json
+                  sf project deploy start \
+                    --source-dir changed-sources/force-app \
+                    --check-only \
+                    --test-level RunLocalTests \
+                    --json
 
             - name: 'Deploy destructive changes (if any)'
-              run: sf project deploy start \ --metadata-dir  "changed-sources/destructiveChanges" --check-only --ignore-warnings 
- 
+              run: |
+                  sf project deploy start \
+                    --metadata-dir changed-sources/destructiveChanges \
+                    --check-only \
+                    --ignore-warnings
